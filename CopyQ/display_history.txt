@@ -1,0 +1,3 @@
+var items = str(clipboard()); // Convert clipboard content to string
+var history = items.split("\n").slice(0, 5).join("\n"); // Show last 5 items
+popup('Clipboard History', history, 2000, 'bottom-right'); // Display popup for 2 seconds
