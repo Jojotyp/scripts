@@ -32,6 +32,9 @@ confirm_default_yes() {
 
 # USAGE (both confirm and confirm_default_yes) #
 
+# Import
+# source "path/to/bash_utils.sh"
+
 # Default (no else) #
 # confirm_default_yes "This could be your question!" && echo "You answered with Yes!"
 
