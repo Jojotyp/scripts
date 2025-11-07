@@ -3,6 +3,7 @@ set -euo pipefail
 
 # to actually rsync run:
 # /home/fabi/Programming/scripts/backup/backup_to_mount.sh --no-dry-run --delete
+# TODO: files that were added to exclude_files.txt don't get deleted in mount
 
 # backup_to_mount.sh
 # Default location (where the script lives) for include/exclude lists:
