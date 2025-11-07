@@ -1,1 +1,6 @@
+exclude_dirs.txt
+exclude_files.txt
+include_dirs.txt
+include_files.txt
+
 test*.*
