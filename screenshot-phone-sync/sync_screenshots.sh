@@ -82,7 +82,9 @@ if [ -z "${model}" ]; then
   model="AndroidPhone"
 fi
 phone_name="${manufacturer}_${model}"
-phone_name="$(echo "${phone_name}" | tr ' /' '__' | tr -cd '[:alnum:]_-.')"
+# Keep only safe filename characters. Put '-' at the end to avoid locale-dependent
+# range parsing errors on Linux (e.g. "reverse collating sequence order").
+phone_name="$(printf '%s' "${phone_name}" | tr ' /' '__' | tr -cd '[:alnum:]_.-')"
 
 dest_base="${HOME}/Screenshots"
 dest="${dest_base}/${phone_name}_${SERIAL}"
@@ -126,9 +128,9 @@ tmp_list="$(mktemp)"
 printf '%s\n' "${files}" | head -n "${N}" > "${tmp_list}"
 
 count="$(wc -l < "${tmp_list}" | tr -d ' ')"
-echo "Device: ${phone_name} (${SERIAL})"
-echo "Remote: ${remote_dir}"
-echo "Local : ${dest}"
+echo "Device:  ${phone_name} (${SERIAL})"
+echo "Remote:  ${remote_dir}"
+echo "Local:   ${dest}"
 echo "Pulling: ${count} screenshot(s) (requested N=${N})"
 
 # Pull each file (adb pull overwrites by default)
