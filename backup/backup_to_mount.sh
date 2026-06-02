@@ -8,6 +8,7 @@ set -euo pipefail
 # - Relative excludes (node_modules/, *.log) work everywhere.
 # - Absolute excludes (/home/fabi/...) are converted per-source.
 # - Can delete excluded items from destination (--delete-excluded).
+# - Skips symlinks by default for filesystems that do not support them.
 # - Dry-run supported.
 # ------------------------------------------------------------
 
@@ -28,6 +29,7 @@ EXCLUDE_FILES_FILE="${SCRIPT_DIR}/exclude_files.txt"
 DRY_RUN=0
 DO_DELETE=1
 VERBOSE=0
+SYMLINK_MODE="skip"
 
 usage() {
   cat <<EOF
@@ -36,6 +38,8 @@ Usage: $(basename "$0") [options]
 Options:
   -n, --dry-run       Show what would happen
   --no-delete         Do not delete anything in destination
+  --symlinks          Preserve symlinks (requires destination filesystem support)
+  --copy-links        Copy symlink targets as regular files/directories
   -v, --verbose       Verbose output
   -h, --help          Show this help
 
@@ -48,6 +52,8 @@ List files (in script directory):
 Notes:
 - Lines starting with '/' in exclude files are treated as ABSOLUTE paths.
 - Other exclude lines are treated as RELATIVE rsync patterns.
+- Default symlink handling is --no-links, which skips symlinks instead of
+  failing on filesystems such as exFAT/FAT/NTFS mounts that cannot store them.
 EOF
 }
 
@@ -186,6 +192,16 @@ dest_for_abs_path() {
   printf -- '%s/%s' "$DEST_ROOT" "${abs#/}"
 }
 
+add_symlink_opts() {
+  local -n opts_ref="$1"
+  case "$SYMLINK_MODE" in
+    skip) opts_ref+=(--no-links) ;;
+    preserve) ;;
+    copy) opts_ref+=(--copy-links) ;;
+    *) die "Unknown symlink mode: $SYMLINK_MODE" ;;
+  esac
+}
+
 run_rsync_dir() {
   local src="$1"
   src="$(expand_path "$src")"
@@ -201,6 +217,7 @@ run_rsync_dir() {
   filter_file="$(make_filter_file_for_src "$src")"
 
   local rsync_opts=(-a -h --partial --inplace)
+  add_symlink_opts rsync_opts
   [[ "$VERBOSE" -eq 1 ]] && rsync_opts+=(--info=progress2)
 
   if [[ "$DO_DELETE" -eq 1 ]]; then
@@ -230,6 +247,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -n|--dry-run) DRY_RUN=1; shift ;;
     --no-delete) DO_DELETE=0; shift ;;
+    --symlinks) SYMLINK_MODE="preserve"; shift ;;
+    --copy-links) SYMLINK_MODE="copy"; shift ;;
     -v|--verbose) VERBOSE=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown argument: $1 (use --help)" ;;
@@ -245,9 +264,17 @@ fi
 
 # -------------------- run --------------------
 # Sync source roots. Exclude files decide what is skipped.
+failed=0
 for d in "${SOURCE_DIRS[@]}"; do
-  run_rsync_dir "$d"
+  if ! run_rsync_dir "$d"; then
+    printf -- 'ERROR: rsync failed for directory: %s\n' "$d" >&2
+    failed=1
+  fi
 done
+
+if [[ "$failed" -ne 0 ]]; then
+  die "Backup finished with errors"
+fi
 
 echo "Backup completed."
 [[ "$DRY_RUN" -eq 1 ]] && echo "(dry-run: no changes were made)"
