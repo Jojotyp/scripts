@@ -1,28 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Pull the most recent camera picture from an Android phone via adb.
-# Destination: ~/Screenshots/<phone_name>_<adb_serial>/
+# Pull last N camera pictures from an Android phone via adb.
+# Default N=1.
+# Destination: ~/Pictures/phone/<phone_name>_<adb_serial>/camera/
 #
 # usage examples:
 # ~/Programming/scripts/screenshot-phone-sync/sync_camera.sh
+# ~/Programming/scripts/screenshot-phone-sync/sync_camera.sh --n 50
 # ~/Programming/scripts/screenshot-phone-sync/sync_camera.sh --serial <ADB_ID>
 
+N=1
 SERIAL=""
 
 usage() {
   cat <<USAGE
+Pull the last N camera images from an Android phone via adb.
+
+Looks in common Android camera folders:
+  /sdcard/DCIM/Camera
+  /sdcard/DCIM/100ANDRO
+  /sdcard/Pictures/Camera
+
+Saves to:
+  ~/Pictures/phone/<phone_name>_<adb_serial>/camera/
+
 Usage:
-  $(basename "$0") [--serial SERIAL]
+  $(basename "$0") [--n N] [--serial SERIAL]
 
 Examples:
   $(basename "$0")
-  $(basename "$0") --serial R58N123ABCD
+  $(basename "$0") --n 25
+  $(basename "$0") --serial R58N123ABCD --n 50
 USAGE
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --n|-n)
+      N="${2:-}"
+      shift 2
+      ;;
     --serial|-s)
       SERIAL="${2:-}"
       shift 2
@@ -76,8 +94,8 @@ phone_name="${manufacturer}_${model}"
 # range parsing errors on Linux (e.g. "reverse collating sequence order").
 phone_name="$(printf '%s' "${phone_name}" | tr ' /' '__' | tr -cd '[:alnum:]_.-')"
 
-dest_base="${HOME}/Screenshots"
-dest="${dest_base}/${phone_name}_${SERIAL}"
+dest_base="${HOME}/Pictures/phone"
+dest="${dest_base}/${phone_name}_${SERIAL}/camera"
 mkdir -p "${dest}"
 
 # Candidate camera directories (device/vendor dependent)
@@ -101,18 +119,28 @@ if [ -z "${remote_dir}" ]; then
   exit 1
 fi
 
-# Get newest image by mtime (ls -t gives newest first)
-latest_file="$("${adb_base[@]}" shell "ls -1t \"$remote_dir\" 2>/dev/null | sed 's/\r$//' | grep -Ei '\\.(jpe?g|png|webp|heic|heif|dng)$' | head -n 1 || true")"
+# Get last N files by mtime (newest first).
+files="$("${adb_base[@]}" shell "ls -1t \"$remote_dir\" 2>/dev/null | sed 's/\r$//' | grep -Ei '\\.(jpe?g|png|webp|heic|heif|dng)$' || true")"
 
-if [ -z "${latest_file}" ]; then
+if [ -z "${files}" ]; then
   echo "No camera images found in: ${remote_dir}"
   exit 0
 fi
 
-echo "Device: ${phone_name} (${SERIAL})"
-echo "Remote: ${remote_dir}/${latest_file}"
-echo "Local:  ${dest}"
+tmp_list="$(mktemp)"
+printf '%s\n' "${files}" | head -n "${N}" > "${tmp_list}"
 
-"${adb_base[@]}" pull -a "${remote_dir}/${latest_file}" "${dest}/" >/dev/null
+count="$(wc -l < "${tmp_list}" | tr -d ' ')"
+echo "Device:  ${phone_name} (${SERIAL})"
+echo "Remote:  ${remote_dir}"
+echo "Local:   ${dest}"
+echo "Pulling: ${count} camera image(s) (requested N=${N})"
+
+while IFS= read -r f; do
+  [ -n "${f}" ] || continue
+  "${adb_base[@]}" pull -a "${remote_dir}/${f}" "${dest}/" >/dev/null
+done < "${tmp_list}"
+
+rm -f "${tmp_list}"
 
 echo "Done."

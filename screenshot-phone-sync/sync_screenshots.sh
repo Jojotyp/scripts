@@ -18,6 +18,17 @@ SERIAL=""
 
 usage() {
   cat <<USAGE
+Pull the last N screenshots from an Android phone via adb.
+
+Looks in common Android screenshot folders:
+  /sdcard/Pictures/Screenshots
+  /sdcard/DCIM/Screenshots
+  /sdcard/Pictures/ScreenShots
+  /sdcard/Screenshots
+
+Saves to:
+  ~/Screenshots/<phone_name>_<adb_serial>/
+
 Usage:
   $(basename "$0") [--n N] [--serial SERIAL]
 
