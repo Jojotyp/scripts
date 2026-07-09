@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Pull last N camera pictures from an Android phone via adb.
+# Pull last N camera media files from an Android phone via adb.
 # Default N=1.
 # Destination: ~/Pictures/phone/<phone_name>_<adb_serial>/camera/
 #
@@ -15,12 +15,15 @@ SERIAL=""
 
 usage() {
   cat <<USAGE
-Pull the last N camera images from an Android phone via adb.
+Pull the last N camera image and video files from an Android phone via adb.
 
 Looks in common Android camera folders:
   /sdcard/DCIM/Camera
   /sdcard/DCIM/100ANDRO
   /sdcard/Pictures/Camera
+
+Includes images and videos:
+  jpg, jpeg, png, webp, heic, heif, dng, mp4, mov, mkv, webm, 3gp
 
 Saves to:
   ~/Pictures/phone/<phone_name>_<adb_serial>/camera/
@@ -120,10 +123,10 @@ if [ -z "${remote_dir}" ]; then
 fi
 
 # Get last N files by mtime (newest first).
-files="$("${adb_base[@]}" shell "ls -1t \"$remote_dir\" 2>/dev/null | sed 's/\r$//' | grep -Ei '\\.(jpe?g|png|webp|heic|heif|dng)$' || true")"
+files="$("${adb_base[@]}" shell "ls -1t \"$remote_dir\" 2>/dev/null | sed 's/\r$//' | grep -Ei '\\.(jpe?g|png|webp|heic|heif|dng|mp4|mov|mkv|webm|3gp)$' || true")"
 
 if [ -z "${files}" ]; then
-  echo "No camera images found in: ${remote_dir}"
+  echo "No camera media files found in: ${remote_dir}"
   exit 0
 fi
 
@@ -134,7 +137,7 @@ count="$(wc -l < "${tmp_list}" | tr -d ' ')"
 echo "Device:  ${phone_name} (${SERIAL})"
 echo "Remote:  ${remote_dir}"
 echo "Local:   ${dest}"
-echo "Pulling: ${count} camera image(s) (requested N=${N})"
+echo "Pulling: ${count} camera media file(s) (requested N=${N})"
 
 while IFS= read -r f; do
   [ -n "${f}" ] || continue
