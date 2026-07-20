@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ------------------------------------------------------------
 # backup_to_mount.sh
-# Mirror configured source roots into /mnt/backup_drive using rsync.
+# Mirror configured source roots into a selected mountpoint using rsync.
 #
 # - Relative excludes (node_modules/, *.log) work everywhere.
 # - Absolute excludes (/home/fabi/...) are converted per-source.
@@ -12,7 +12,7 @@ set -euo pipefail
 # - Dry-run supported.
 # ------------------------------------------------------------
 
-DEST_ROOT="/mnt/backup_drive"
+DEST_ROOT=""
 
 SOURCE_DIRS=(
   "/etc"
@@ -36,24 +36,31 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Options:
-  -n, --dry-run       Show what would happen
-  --no-delete         Do not delete anything in destination
+  -n, --dry-run       Simulate rsync changes (use --verbose to show progress)
+  -d, --dest PATH     Destination mountpoint
+  --no-delete         Keep destination entries missing or excluded from source
   --symlinks          Preserve symlinks (requires destination filesystem support)
   --copy-links        Copy symlink targets as regular files/directories
   -v, --verbose       Verbose output
   -h, --help          Show this help
 
-Destination mountpoint:
-  ${DEST_ROOT}
+Examples:
+  $(basename "$0") --dry-run --dest /mnt/backup_drive_new
+  $(basename "$0") -v -d /mnt/backup_drive
 
 List files (in script directory):
   exclude_dirs.txt, exclude_files.txt
 
 Notes:
+- By default, files missing from the source and files matching the exclusion
+  lists are deleted from the destination (--delete --delete-excluded).
+- Dry-run prevents rsync changes, but missing destination directories may still
+  be created by the script.
 - Lines starting with '/' in exclude files are treated as ABSOLUTE paths.
 - Other exclude lines are treated as RELATIVE rsync patterns.
 - Default symlink handling is --no-links, which skips symlinks instead of
   failing on filesystems such as exFAT/FAT/NTFS mounts that cannot store them.
+- The configured source directories require running this script as root.
 EOF
 }
 
@@ -68,8 +75,26 @@ die() {
   exit 1
 }
 
+die_missing_dest() {
+  printf -- 'ERROR: Missing destination mountpoint. Use --dest PATH or -d PATH.\n' >&2
+  printf -- 'Example: %s --dry-run --dest /mnt/backup_drive_new\n' "$(basename "$0")" >&2
+  exit 1
+}
+
 is_mountpoint() {
   mountpoint -q -- "$1"
+}
+
+path_is_inside_source() {
+  local path="${1%/}"
+  local src
+  for src in "${SOURCE_DIRS[@]}"; do
+    src="${src%/}"
+    if [[ "$path" == "$src" || "$path" == "$src/"* ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 requires_root() {
@@ -246,6 +271,16 @@ run_rsync_dir() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -n|--dry-run) DRY_RUN=1; shift ;;
+    -d|--dest)
+      [[ $# -ge 2 ]] || die "$1 requires a destination path"
+      DEST_ROOT="$(expand_path "$2")"
+      shift 2
+      ;;
+    --dest=*)
+      DEST_ROOT="$(expand_path "${1#*=}")"
+      [[ -n "$DEST_ROOT" ]] || die "--dest requires a destination path"
+      shift
+      ;;
     --no-delete) DO_DELETE=0; shift ;;
     --symlinks) SYMLINK_MODE="preserve"; shift ;;
     --copy-links) SYMLINK_MODE="copy"; shift ;;
@@ -256,6 +291,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # -------------------- checks --------------------
+[[ -n "$DEST_ROOT" ]] || die_missing_dest
+DEST_ROOT="${DEST_ROOT%/}"
+[[ "$DEST_ROOT" == /* ]] || die "Destination mountpoint is not absolute: $DEST_ROOT"
+path_is_inside_source "$DEST_ROOT" && die "Destination must not be inside a source directory: $DEST_ROOT"
 [[ -d "$DEST_ROOT" ]] || die "Destination directory does not exist: $DEST_ROOT"
 is_mountpoint "$DEST_ROOT" || die "$DEST_ROOT is not a mountpoint (refusing to run)"
 if requires_root && [[ "$EUID" -ne 0 ]]; then
