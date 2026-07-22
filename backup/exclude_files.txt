@@ -1,0 +1,20 @@
+# Relative patterns apply inside every source root.
+# Absolute paths are excluded only from the matching source root.
+.DS_Store
+*.log
+*.log.*
+*.pyc
+*.pyo
+*.hprof
+*.swp
+*.swo
+*~
+core
+.eslintcache
+.coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+#wechselnde_Einheiten.png

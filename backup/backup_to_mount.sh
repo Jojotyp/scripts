@@ -227,6 +227,23 @@ add_symlink_opts() {
   esac
 }
 
+rewrite_rsync_output() {
+  local src_root="${1%/}"
+  local output_fd="$2"
+  local line
+  local rel_path
+
+  while IFS= read -r line; do
+    if [[ "$line" == skipping\ non-regular\ file\ \"*\" ]]; then
+      rel_path="${line#skipping non-regular file \"}"
+      rel_path="${rel_path%\"}"
+      printf -- 'skipping non-regular file "%s/%s"\n' "$src_root" "$rel_path" >&"$output_fd"
+    else
+      printf -- '%s\n' "$line" >&"$output_fd"
+    fi
+  done
+}
+
 run_rsync_dir() {
   local src="$1"
   src="$(expand_path "$src")"
@@ -258,7 +275,7 @@ run_rsync_dir() {
 
   log "== DIR  : $src  ->  $dest"
   log "== FILTER: $filter_file"
-  if "${cmd[@]}"; then
+  if "${cmd[@]}" > >(rewrite_rsync_output "$src" 1) 2> >(rewrite_rsync_output "$src" 2); then
     rm -f -- "$filter_file"
   else
     local status=$?

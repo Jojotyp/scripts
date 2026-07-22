@@ -1,0 +1,72 @@
+/mnt/backup_drive/
+
+node_modules/
+
+**/cache/***
+**/log/***
+**/logs/***
+**/tmp/***
+**/temp/***
+
+# home
+/home/fabi/Documents/Fussball
+/home/fabi/Documents/Studium
+
+/home/fabi/dotfiles
+/home/fabi/dotfiles_bak
+/home/fabi/Music
+/home/fabi/Programming/hints
+/home/fabi/Programming/own_packages
+/home/fabi/Programming/Projects/private
+/home/fabi/Programming/scripts
+
+# package/build caches in home
+/home/fabi/.cache
+/home/fabi/.npm
+/home/fabi/.pnpm-store
+/home/fabi/.yarn
+/home/fabi/.cargo/registry
+/home/fabi/.cargo/git
+/home/fabi/.rustup/toolchains
+/home/fabi/.gradle/caches
+/home/fabi/.gradle/daemon
+/home/fabi/.gradle/native
+/home/fabi/.gradle/wrapper/dists
+/home/fabi/.m2/repository
+/home/fabi/.local/share/Trash
+
+# browser/runtime caches
+/home/fabi/.mozilla/firefox/*/cache2
+/home/fabi/.config/google-chrome/*/Cache
+/home/fabi/.config/chromium/*/Cache
+/home/fabi/.config/*/Cache
+/home/fabi/.config/*/Code Cache
+/home/fabi/.config/*/GPUCache
+/home/fabi/.config/*/CachedData
+/home/fabi/.config/*/Crashpad
+
+# system runtime / caches
+/var/cache
+/var/tmp
+/var/lib/apt/lists
+/var/lib/systemd/coredump
+/var/lib/flatpak
+
+# flatpak user installs / caches
+/home/fabi/.local/share/flatpak
+/home/fabi/.cache/flatpak
+
+# common dev/build outputs
+**/.next/***
+**/.nuxt/***
+**/dist/***
+**/build/***
+**/target/***
+**/.venv/***
+**/venv/***
+**/__pycache__/***
+**/.pytest_cache/***
+**/.mypy_cache/***
+**/.ruff_cache/***
+**/.parcel-cache/***
+**/.turbo/***
